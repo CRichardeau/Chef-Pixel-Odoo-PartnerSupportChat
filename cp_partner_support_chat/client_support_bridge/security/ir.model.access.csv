@@ -1,0 +1,3 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_client_support_bridge,client.support.bridge,model_client_support_bridge,,1,1,1,1
+access_client_support_authorized,client.support.authorized,model_client_support_authorized,,1,1,1,1

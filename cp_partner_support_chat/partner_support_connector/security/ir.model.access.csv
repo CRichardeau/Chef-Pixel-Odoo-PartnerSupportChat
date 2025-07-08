@@ -1,0 +1,3 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_partner_support_connector,partner.support.connector,model_partner_support_connector,,1,1,1,1
+access_partner_support_session,partner.support.session,model_partner_support_session,,1,1,1,1
