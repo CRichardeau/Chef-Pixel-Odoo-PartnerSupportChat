@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<odoo>
+    <!-- views/partner_support_connector_views.xml -->
+    <odoo>
+        <data>
+            <!-- Support Connector Form View -->
+            <record id="view_partner_support_connector_form" model="ir.ui.view">
+                <field name="name">partner.support.connector.form</field>
+                <field name="model">partner.support.connector</field>
+                <field name="arch" type="xml">
+                    <form string="Support Connector">
+                        <header>
+                            <button name="test_connection" string="Test Connection" type="object" class="btn-primary"/>
+                        </header>
+                        <sheet>
+                            <div class="oe_title">
+                                <label for="name" class="oe_edit_only"/>
+                                <h1>
+                                    <field name="name" placeholder="e.g. Main Support Channel"/>
+                                </h1>
+                            </div>
+                            <group>
+                                <group>
+                                    <field name="partner_url" placeholder="https://partner.odoo.com"/>
+                                    <field name="api_key" password="True"/>
+                                </group>
+                                <group>
+                                    <field name="partner_database" required="1"/>
+                                    <field name="is_active"/>
+                                </group>
+                            </group>
+                        </sheet>
+                    </form>
+                </field>
+            </record>
+
+            <!-- Support Connector Tree View -->
+            <record id="view_partner_support_connector_tree" model="ir.ui.view">
+                <field name="name">partner.support.connector.tree</field>
+                <field name="model">partner.support.connector</field>
+                <field name="arch" type="xml">
+                    <list string="Support Connectors">
+                        <field name="name"/>
+                        <field name="partner_url"/>
+                        <field name="is_active"/>
+                    </list>
+                </field>
+            </record>
+
+            <!-- Support Session Form View -->
+            <record id="view_partner_support_session_form" model="ir.ui.view">
+                <field name="name">partner.support.session.form</field>
+                <field name="model">partner.support.session</field>
+                <field name="arch" type="xml">
+                    <form string="Support Session">
+                        <header>
+                            <button name="initiate_support_chat" string="Start Chat"
+                                    type="object" class="btn-primary" invisible="state != 'draft'"/>
+                            <button name="close_session" string="Close Chat"
+                                    type="object" class="btn-primary" invisible="state != 'active'"/>
+                            <field name="state" widget="statusbar"/>
+                        </header>
+                        <sheet>
+                            <div class="oe_title">
+                                <label for="name" class="oe_edit_only"/>
+                                <h1>
+                                    <field name="name"/>
+                                </h1>
+                            </div>
+                            <group>
+                                <group>
+                                    <field name="user_id"/>
+                                    <field name="connector_id" options="{'no_create': True}"/>
+                                    <field name="partner_channel_id" readonly="1" invisible="1"/>
+                                    <field name="is_one_to_one_talk" readonly="1" invisible="1"/>
+                                </group>
+                                <group>
+                                    <field name="livechat_channel_id" required="1"/>
+                                    <div>
+                                        <label for="mail_channel_id"/>
+                                        <field name="mail_channel_id" class="oe_inline" readonly="1" style="margin-left: 10px"/>
+                                        <button name="open_discuss_channel" type="object" icon="fa-comments"
+                                                class="btn btn-link" title="Open Chat" width="5%"/>
+                                    </div>
+                                    <field name="operator_name" readonly="1"/>
+                                </group>
+                            </group>
+                        </sheet>
+                        <chatter/>
+                    </form>
+                </field>
+            </record>
+
+            <!-- Support Session Tree View -->
+            <record id="view_partner_support_session_tree" model="ir.ui.view">
+                <field name="name">partner.support.session.tree</field>
+                <field name="model">partner.support.session</field>
+                <field name="arch" type="xml">
+                    <list string="Support Sessions">
+                        <field name="name"/>
+                        <field name="user_id"/>
+                        <field name="connector_id"/>
+                        <field name="state"/>
+                    </list>
+                </field>
+            </record>
+
+            <!-- Actions -->
+            <record id="action_partner_support_connector" model="ir.actions.act_window">
+                <field name="name">Support Connectors</field>
+                <field name="res_model">partner.support.connector</field>
+                <field name="view_mode">list,form</field>
+            </record>
+
+            <record id="action_partner_support_session" model="ir.actions.act_window">
+                <field name="name">Support Chat History</field>
+                <field name="res_model">partner.support.session</field>
+                <field name="view_mode">list,form</field>
+            </record>
+
+            <!-- Menus -->
+            <menuitem id="menu_partner_support" name="Partner Support" sequence="100"/>
+
+            <menuitem id="menu_partner_support_connector" name="Support Connectors"
+                      parent="menu_partner_support" action="action_partner_support_connector" sequence="10"/>
+
+            <menuitem id="menu_partner_support_session" name="Chat History"
+                      parent="menu_partner_support" action="action_partner_support_session" sequence="20"/>
+        </data>
+    </odoo>
+</odoo>
