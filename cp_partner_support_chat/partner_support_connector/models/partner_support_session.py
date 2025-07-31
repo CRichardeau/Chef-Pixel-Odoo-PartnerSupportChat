@@ -25,6 +25,8 @@ class PartnerSupportSession(models.Model):
                                           string="Livechat Channel", copy=False)
     mail_channel_id = fields.Many2one('discuss.channel', "Chat Channel", copy=False)
     operator_name = fields.Char("Operator Name", copy=False)
+    partner_company = fields.Char("Partner Company", copy=False)
+    # is_one_to_one_talk = fields.Boolean(string="Is One to One Talk", default=False, copy=False)
 
     def initiate_support_chat(self):
         """Initiate a chat with partner support"""
@@ -39,11 +41,13 @@ class PartnerSupportSession(models.Model):
             'user_id': self.user_id.id,
             'user_name': self.user_id.name,
             'company_name': company.name,
-            'partner_session': self.id
+            'partner_session': self.id,
         }
 
         # Make API call to partner
         try:
+            partner_obj = self.env['res.partner'].sudo()
+
             url = f"{self.connector_id.partner_url}/client_support/initiate"
             headers = {'Content-type': 'application/json'}
 
@@ -58,13 +62,8 @@ class PartnerSupportSession(models.Model):
                 'group_public_id': False,
                 'group_ids': [(6, 0, [])]
             })
-            for member in mail_channel.channel_member_ids:
-                member.write({
-                    'custom_notifications': 'all'
-                })
 
             data['client_channel'] = mail_channel.id
-            print('\n--data--->', data)
             response = requests.post(url, data=json.dumps(data), headers=headers)
             result = response.json()
             if result:
@@ -78,19 +77,51 @@ class PartnerSupportSession(models.Model):
 
             mail_channel.write({'partner_channel_id': partner_channel})
 
+            company_name = result.get('partner_company', '')
+            # operator_name = result.get('operator_name', 'Support Agent')
             # Update session with partner info
             self.sudo().write({
                 'state': 'active',
                 'partner_channel_id': partner_channel,
-                'operator_name': result.get('operator_name', 'Support Agent'),
-                'mail_channel_id': mail_channel.id
+                # 'operator_name': operator_name,
+                'mail_channel_id': mail_channel.id,
+                'partner_company': company_name
             })
+
+            # if company_name:
+            #     company_partner = partner_obj.search([
+            #         ('name', '=', company_name)
+            #     ], limit=1)
+            #     if not company_partner:
+            #         company_partner = partner_obj.create({
+            #             'name': company_name,
+            #             'company_type': 'company'
+            #         })
+            #     operator_partner = partner_obj.search([
+            #         ('name', '=', operator_name),
+            #         ('parent_id', '=', company_partner.id)
+            #     ], limit=1)
+            #     if not operator_partner:
+            #         operator_partner = partner_obj.create({
+            #             'name': operator_name,
+            #             'company_type': 'person',
+            #             'parent_id': company_partner.id,
+            #         })
+            #     mail_channel.write({
+            #         'channel_partner_ids': [(4, operator_partner.id)],
+            #         'livechat_operator_id': operator_partner.id,
+            #     })
+            for member in mail_channel.channel_member_ids:
+                member.write({
+                    'custom_notifications': 'all',
+                    'fold_state': 'open'
+                })
 
             # Post system message to the chatter
             self.message_post(
-                body=f"Connected to support operator: {result.get('operator_name', 'Support Agent')}",
+                body=f"Connected to support operator.",
                 message_type='comment',
-                subtype_xmlid='mail.mt_note'
+                subtype_xmlid='mail.mt_note',
             )
 
             # Redirect to mail channel
@@ -132,7 +163,7 @@ class PartnerSupportSession(models.Model):
             self.message_post(
                 body=f"<p><strong>You:</strong> {message}</p>",
                 message_type='comment',
-                subtype_xmlid='mail.mt_comment'
+                subtype_xmlid='mail.mt_comment',
             )
 
             return True

@@ -15,7 +15,6 @@ class DiscussChannel(models.Model):
     support_session_id = fields.Many2one('partner.support.session', string="Partner Support Session", copy=False)
 
     def _message_post_after_hook(self, message, msg_vals):
-        print('\n Partner module -_message_post_after_hook--->', self, self._context)
         super(DiscussChannel, self)._message_post_after_hook(message, msg_vals)
 
         if self.env.context.get('to_bridge'):
@@ -33,7 +32,6 @@ class DiscussChannel(models.Model):
                 'message_type': 'comment',
                 'partner_ids': [(4, self.env.user.partner_id.id)],
             }
-            print('\n--message_data--->', message_data)
 
             headers = {'Content-Type': 'application/json'}
             try:

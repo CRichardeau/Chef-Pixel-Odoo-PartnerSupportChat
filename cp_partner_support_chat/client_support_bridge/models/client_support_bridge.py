@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 import uuid
 import logging
 import requests
@@ -96,16 +98,38 @@ class ClientSupportBridge(models.Model):
     def initialize_chat_session(self, client_user_id, client_user_name, client_company_name, client_channel,
                                 partner_session, support_users):
         """Create a new mail.channel for the incoming client request"""
-        print('\n--initialize chat-->', support_users, client_channel)
-        operator = self.livechat_channel_id.available_operator_ids[
-            0] if self.livechat_channel_id.available_operator_ids else False
+        partner_obj = self.env['res.partner'].sudo()
+        operator_partner = False
 
+        client_company_partner = partner_obj.search([
+            ('name', '=', client_company_name)], limit=1)
+        if not client_company_partner:
+            client_company_partner = partner_obj.create({
+                'name': client_company_name,
+                'company_type': 'company'
+            })
+            operator_partner = partner_obj.search([
+                ('name', '=', client_user_name),
+                ('parent_id', '=', client_company_partner.id)
+            ], limit=1)
+            if not operator_partner:
+                operator_partner = partner_obj.create({
+                    'name': client_user_name,
+                    'company_type': 'person',
+                    'parent_id': client_company_partner.id,
+                })
+        if operator_partner:
+            operator = operator_partner
+        else:
+            operator = self.livechat_channel_id.available_operator_ids[
+                0].partner_id if self.livechat_channel_id.available_operator_ids else False
         if not operator:
             return {'error': 'No operators available'}
 
-        support_users = self.env['res.users'].sudo().search([])
         partner_ids = [user.partner_id.id for user in support_users]
         channel_partner_ids = [(4, pid) for pid in partner_ids]
+        if operator_partner:
+            channel_partner_ids.append((4, operator_partner.id))
 
         # Create mail channel - reusing livechat code
         mail_channel = self.env['discuss.channel'].sudo().with_context(mail_create_nosubscribe=True).create({
@@ -119,10 +143,11 @@ class ClientSupportBridge(models.Model):
             'group_public_id': False,
             'group_ids': [(6, 0, [])]
         })
-        print('\n--client side channel-->', mail_channel)
+
         for member in mail_channel.channel_member_ids:
             member.write({
-                'custom_notifications': 'all'
+                'custom_notifications': 'all',
+                'fold_state': 'open'
             })
 
         # Update bridge record
@@ -145,7 +170,7 @@ class ClientSupportBridge(models.Model):
         return {
             'channel_id': mail_channel.id,
             'operator_id': operator.id if operator else False,
-            'operator_name': operator.partner_id.name if operator.partner_id else 'Support Agent',
+            'operator_name': operator.name if operator else 'Support Agent',
             'partner_company': self.env.company.name
         }
 

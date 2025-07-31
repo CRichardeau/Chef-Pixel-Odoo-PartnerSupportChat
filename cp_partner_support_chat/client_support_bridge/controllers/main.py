@@ -17,7 +17,6 @@ class ClientSupportBridgeController(http.Controller):
         API endpoint to initiate a support session
         """
         data = json.loads(request.httprequest.data.decode('utf-8'))
-        print('\n--initiate support session-->', data)
 
         # Extract and validate parameters
         db_name = data.get('db_name')
@@ -41,19 +40,29 @@ class ClientSupportBridgeController(http.Controller):
         support_users = request.env['res.users'].sudo().search([])
             
         # Initialize chat session
-        result = bridge.initialize_chat_session(user_id, user_name, company_name, client_channel, partner_session, support_users)
+        result = bridge.initialize_chat_session(user_id, user_name, company_name, client_channel, partner_session,
+                                                support_users)
         return result
 
     @http.route('/client_support_bridge/receive_message', type='json', auth='public', methods=['POST'], csrf=False)
     def receive_message(self, **kwargs):
         try:        
             data = json.loads(request.httprequest.data.decode('utf-8'))
+
             channel = request.env['discuss.channel'].sudo().search([
                 ('id', '=', data.get('channel_id'))
             ])
-            
             if not channel:
                 return {'status': 'error', 'message': 'Channel not found'}
+
+            partner_id = request.env.user.partner_id
+            if 'author_id' in data:
+                author_id = data.get('author_id')
+                if 'name' in author_id:
+                    author_name = author_id.get('name')
+                    partner_id = request.env['res.partner'].sudo().search([
+                        ('name', '=', author_name)
+                    ], limit=1)
 
             body = data.get('body')
             soup = BeautifulSoup(body, 'html.parser')
@@ -69,9 +78,9 @@ class ClientSupportBridgeController(http.Controller):
                 body = link_text
             msg = channel.with_context(from_bridge=True,mail_create_nosubscribe=True,mail_create_nolog=True).sudo().message_post(
                 body=Markup(f'<p>{body}</p>'),
-                author_id=request.env.user.partner_id.id,
+                author_id=partner_id.id,
                 message_type='comment',
-                subtype_xmlid='mail.mt_comment'
+                subtype_xmlid='mail.mt_comment',
             )
             
             return {'status': 'success', 'message_id': msg.id}

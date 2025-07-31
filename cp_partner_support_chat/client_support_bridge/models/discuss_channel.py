@@ -1,4 +1,6 @@
-from odoo import models, fields
+# -*- coding: utf-8 -*-
+
+from odoo import models, fields, api, _
 import requests
 import json
 import logging
@@ -10,16 +12,24 @@ class DiscussChannel(models.Model):
 
     client_channel_id = fields.Char(string="Client Channel ID", copy=False)
     client_connector_id = fields.Many2one('client.support.bridge', string="Client Connector")
+    is_partner_communicate = fields.Boolean("Is Partner Communicate", default=False, copy=False)
 
     def _message_post_after_hook(self, message, msg_vals):
-        print('\n client module -_message_post_after_hook--->', self, self._context, self.client_channel_id, self.client_connector_id.client_channel)
         super(DiscussChannel, self)._message_post_after_hook(message, msg_vals)
 
         if self.env.context.get('from_bridge'):
             return
 
         if (self.client_channel_id or self.client_connector_id.client_channel) and self.client_connector_id:
-            
+            if not self.is_partner_communicate:
+                # for member in self.channel_member_ids.filtered(lambda x: x.partner_id != self.env.user.partner_id):
+                #     member.write({
+                #         'custom_notifications': 'no_notif',
+                #         'fold_state': 'closed'
+                #     })
+                self.channel_partner_ids = [(6, 0, [self.env.user.partner_id.id])]
+            self.is_partner_communicate = True
+
             message_data = {
                 'channel_id': self.client_channel_id or self.client_connector_id.client_channel,
                 'body': message.body,
@@ -29,8 +39,8 @@ class DiscussChannel(models.Model):
                 },
                 'message_type': 'comment',
                 'partner_ids': [(4, self.env.user.partner_id.id)],
+                'is_one_partner_talk': True
             }
-            print('\n--message_data--->', message_data)
 
             headers = {'Content-Type': 'application/json'}
             try:

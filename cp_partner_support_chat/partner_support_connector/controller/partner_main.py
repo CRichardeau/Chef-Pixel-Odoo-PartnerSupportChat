@@ -45,13 +45,48 @@ class ClientSupportBridgeController(http.Controller):
     def receive_message(self, **kwargs):
         try:
             data = json.loads(request.httprequest.data.decode('utf-8'))
-            print('\n---client receive message-->', data)
+
             channel = request.env['discuss.channel'].sudo().search([
                 ('id', '=', data.get('channel_id'))
             ])
-
             if not channel:
                 return {'status': 'error', 'message': 'Channel not found'}
+
+            partner_id = request.env.user.partner_id
+            if 'is_one_partner_talk' in data:
+                partner_obj = request.env['res.partner'].sudo()
+                support_session = channel.support_session_id
+                company_name = support_session.partner_company
+                author_name = ''
+                if 'author_id' in data:
+                    author_id = data.get('author_id')
+                    if 'name' in author_id:
+                        author_name = author_id.get('name')
+                if support_session and not support_session.operator_name:
+                    if company_name:
+                        company_partner = partner_obj.search([
+                            ('name', '=', company_name)
+                        ], limit=1)
+                        if not company_partner:
+                            company_partner = partner_obj.create({
+                                'name': company_name,
+                                'company_type': 'company'
+                            })
+                        partner_id = partner_obj.search([
+                            ('name', '=', author_name),
+                            ('parent_id', '=', company_partner.id)
+                        ], limit=1)
+                        if not partner_id:
+                            partner_id = partner_obj.create({
+                                'name': author_name,
+                                'company_type': 'person',
+                                'parent_id': company_partner.id,
+                            })
+                        support_session.operator_name = partner_id.name
+                        channel.write({
+                            'channel_partner_ids': [(4, partner_id.id)],
+                            'livechat_operator_id': partner_id.id,
+                        })
 
             body = data.get('body')
             soup = BeautifulSoup(body, 'html.parser')
@@ -68,7 +103,7 @@ class ClientSupportBridgeController(http.Controller):
             msg = channel.with_context(to_bridge=True, mail_create_nosubscribe=True,
                                        mail_create_nolog=True).sudo().message_post(
                 body=Markup(f'<p>{body}</p>'),
-                author_id=request.env.user.partner_id.id,
+                author_id=partner_id.id,
                 message_type='comment',
                 subtype_xmlid='mail.mt_comment'
             )

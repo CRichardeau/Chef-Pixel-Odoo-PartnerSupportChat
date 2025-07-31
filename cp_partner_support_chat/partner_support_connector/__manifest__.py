@@ -9,7 +9,7 @@
     "author": "CHEF PIXEL",
     "website": "https://chef-pixel.fr",
     "support": "hello@chef-pixel.fr",
-    "depends": ["base", "mail", "im_livechat"],
+    "depends": ["base", "mail", "im_livechat", "contacts"],
     "data": [
         "security/ir.model.access.csv",
         "views/partner_support_connector_view.xml",
